@@ -30,7 +30,7 @@ after_bundle do
   add_javascript_packages
   add_sidekiq
   add_rspec
-  # add_friendly_id # need auth
+  add_friendly_id
   add_whenever
   add_sitemap
   configure_rubocop
