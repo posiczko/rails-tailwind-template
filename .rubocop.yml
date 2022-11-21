@@ -1,0 +1,12 @@
+AllCops:
+  NewCops: enable
+
+inherit_gem:
+  caliber:
+    # Prefer Shopify's style guide over the caliber's RuboCop style guide
+    # - config/ruby.yml
+    - config/performance.yml
+    - config/thread.yml
+    - config/rake.yml
+    - config/rspec.yml
+  rubocop-shopify: rubocop.yml
