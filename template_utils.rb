@@ -3,6 +3,14 @@
 require "fileutils"
 require "shellwords"
 
+def add_authentication
+  say "\n. Adding authentication\n", :blue
+  add_gem("rodauth-rails")
+  run("bundle install")
+  rails_command("generate rodauth:install")
+  rails_command("generate rodauth:views")
+end
+
 # Copied from: https://github.com/mattbrictson/rails-template
 # Add this template directory to source_paths so that Thor actions like
 # copy_file and template resolve against our source files. If this file was

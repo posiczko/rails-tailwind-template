@@ -25,7 +25,7 @@ add_gems
 
 after_bundle do
   set_application_name
-  # add_users # need auth
+  add_authentication
   add_authorization
   add_javascript_packages
   add_sidekiq
