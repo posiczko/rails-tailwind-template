@@ -4,11 +4,14 @@ require "fileutils"
 require "shellwords"
 
 def add_authentication
-  say "\n. Adding authentication\n", :blue
-  add_gem("rodauth-rails")
-  run("bundle install")
-  rails_command("generate rodauth:install")
-  rails_command("generate rodauth:views")
+  log_action ". Adding authentication"
+  add_gem"rodauth-rails"
+  run "bundle install"
+  rails_command "generate rodauth:install"
+  rails_command "generate rodauth:views"
+  insert_into_file "config/environments/development.rb",
+                   "config.action_mailer.default_url_options = { host: 'localhost', port: 3000 }",
+                   before: "^end"
 end
 
 # Copied from: https://github.com/mattbrictson/rails-template
@@ -17,13 +20,13 @@ end
 # invoked remotely via HTTP, that means the files are not present locally.
 # In that case, use `git clone` to download them to a local temporary dir.
 def add_authorization
-  say "\n. Adding authorization policy\n", :blue
+  log_action ". Adding authorization policy"
 
-  rails_command("generate action_policy:install")
+  rails_command "generate action_policy:install"
 end
 
 def add_friendly_id
-  say "\n. Adding friendly_id\n", :blue
+  log_action ". Adding friendly_id"
 
   generate "friendly_id"
   insert_into_file(Dir["db/migrate/**/*friendly_id_slugs.rb"].first, "[5.2]", after: "ActiveRecord::Migration")
@@ -53,7 +56,7 @@ def add_gem(name, *options)
 end
 
 def add_gems
-  say "\n. Adding gems\n", :blue
+  log_action ". Adding gems"
 
   add_gem("action_policy")
   add_gem("cssbundling-rails")
@@ -77,13 +80,13 @@ def add_gems
 end
 
 def add_sitemap
-  say "\n. Adding sitemap\n", :blue
+  log_action ". Adding sitemap"
 
-  rails_command("sitemap:install")
+  rails_command "sitemap:install"
 end
 
 def add_sidekiq
-  say "\n. Adding sidekiq\n", :blue
+  log_action ". Adding sidekiq"
 
   environment("config.active_job.queue_adapter = :sidekiq")
 
@@ -100,7 +103,7 @@ def add_sidekiq
 end
 
 def add_rspec
-  say "\n. Adding rspec\n", :blue
+  log_action ". Adding rspec"
   gem_group :development, :test do
     gem "rspec-rails"
   end
@@ -110,12 +113,12 @@ def add_rspec
 end
 
 def add_whenever
-  say "\n. Adding whenever\n", :blue
+  log_action ". Adding whenever"
   run("wheneverize .")
 end
 
 def configure_rubocop
-  say "\n. Adding rubocop\n", :blue
+  log_action ". Adding rubocop"
   copy_file(".rubocop.yml")
 
   content = <<~'RUBY'
@@ -139,23 +142,31 @@ def configure_rubocop
             /warn \"Activating bundler .+$/,
             content
 
-  run "rubocop -A"
+  say
+  say "You can now run:"
+  say "rubocop -A"
+  say
+end
+
+def configure_guard
+  log_action ". Configuring guard"
+  run "bundle exec guard init livereload"
 end
 
 def configure_tailwind
-  say "\n. Configuring tailwind\n", :blue
+  log_action ". Configuring tailwind"
   remove_file "tailwind.config.js"
   run "yarn add -D @tailwindcss/typography @tailwindcss/forms @tailwindcss/aspect-ratio @tailwindcss/line-clamp"
   copy_file "tailwind.config.js"
 end
 
 def add_javascript_packages
-  say "\n. Adding javascript packages\n", :blue
+  log_action ". Adding javascript packages"
   run "yarn add local-time"
 end
 
 def copy_templates
-  say "\n. Copying templates\n", :blue
+  log_action ". Copying templates"
 
   # remove_file("app/assets/stylesheets/application.css")
   # remove_file("app/javascript/application.js")
@@ -169,15 +180,16 @@ def copy_templates
   #
   # directory("config", force: true)
   # directory("lib", force: true)
-  #
+
   directory "app", force: true
   directory "lib", force: true
+  route("root to: 'home#index'")
   route("get '/terms', to: 'home#terms'")
   route("get '/privacy', to: 'home#privacy'")
 end
 
 def default_to_esbuild
-  say "\n. Defaulting to esbuild\n", :blue
+  log_action ". Defaulting to esbuild"
 
   return if options[:javascript] == "esbuild"
 
@@ -190,8 +202,14 @@ def gem_exists?(name)
   File.read("Gemfile") =~ /^\s*gem ['"]#{name}['"]/
 end
 
+def log_action(message)
+  say 
+  say message, :blue
+  say 
+end
+
 def set_application_name
-  say "\n. Setting application name\n", :blue
+  log_action ". Setting application name"
 
   # Add Application Name to Config
   environment("config.application_name = Rails.application.class.module_parent_name")

@@ -33,7 +33,6 @@ after_bundle do
   add_friendly_id
   add_whenever
   add_sitemap
-  configure_rubocop
   # add_esbuild_script
   # rails_command "active_storage:install" # needs auth
 
@@ -42,6 +41,8 @@ after_bundle do
 
   copy_templates
   configure_tailwind
+  configure_guard
+  configure_rubocop
 
   # Commit everything to git
   unless ENV["SKIP_GIT"]
