@@ -9,9 +9,9 @@ def add_authentication
   run "bundle install"
   rails_command "generate rodauth:install"
   rails_command "generate rodauth:views"
-  insert_into_file "config/environments/development.rb",
-                   "config.action_mailer.default_url_options = { host: 'localhost', port: 3000 }",
-                   before: "^end"
+  inject_into_file "config/environments/development.rb",
+                   "  config.action_mailer.default_url_options = { host: 'localhost', port: 3000 }",
+                   before: /^end/
 end
 
 # Copied from: https://github.com/mattbrictson/rails-template
