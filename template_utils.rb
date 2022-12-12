@@ -126,11 +126,11 @@ def add_gems
 
   add_gem("action_policy")
   add_gem("cssbundling-rails")
-  add_gem("friendly_id", "~> 5.4.2")
+  add_gem("friendly_id", "~> 5.5.0")
   add_gem("madmin")
   add_gem("name_of_person", "~> 1.1.1")
   if active_job_sidekiq?
-    add_gem("sidekiq", "~> 7.0.1")
+    add_gem("sidekiq", "~> 7.0.2")
   else
     add_gem("good_job")
   end
@@ -144,7 +144,12 @@ def add_gems
   end
 
   gem_group :code_quality do
+    gem "brakeman"
+    gem "bundler-audit"
+    gem "bundler-leak"
     gem "caliber"
+    gem "git-lint"
+    gem "reek"
     gem "rubocop-shopify"
   end
 end
