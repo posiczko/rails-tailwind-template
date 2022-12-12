@@ -5,7 +5,69 @@ require "shellwords"
 
 def add_authentication
   log_action ". Adding authentication"
-  add_gem"rodauth-rails"
+  if options[:authentication] == "devise"
+    add_authentication_devise
+  else
+    add_authentication_rodauth
+  end
+end
+
+def add_authentication_devise
+  log_action ". Adding authentication devise"
+  add_gem "devise"
+  add_gem "devise-tailwindcssed"
+
+  inject_into_file "config/environments/development.rb",
+                   "  config.action_mailer.default_url_options = { host: 'localhost', port: 3000 }",
+                   before: /^end/
+
+  run "bundle install"
+  generate "devise:install"
+  generate "devise:views:tailwindcssed"
+  generate :devise, "User", "first_name", "last_name", "admin:boolean"
+
+  # set admin boolean to false by default
+  in_root do
+    migration = Dir.glob("db/migrate/*").max_by { |f| File.mtime(f) }
+    gsub_file migration, /:admin/, ":admin, default: false"
+  end
+
+  # name_of_person gem
+  append_to_file("app/models/user.rb", "\nhas_person_name\n", after: "class User < ApplicationRecord")
+
+  inject_into_file "config/initializers/devise.rb", "  config.navigational_formats = ['/', :html, :turbo_stream]", after: "Devise.setup do |config|\n"
+
+  inject_into_file 'config/initializers/devise.rb', after: "# frozen_string_literal: true\n" do
+    <<~EOF
+      class TurboFailureApp < Devise::FailureApp
+        def respond
+          if request_format == :turbo_stream
+            redirect
+          else
+            super
+          end
+        end
+        def skip_format?
+          %w(html turbo_stream */*).include? request_format.to_s
+        end
+      end
+    EOF
+  end
+
+  inject_into_file 'config/initializers/devise.rb', after: "# ==> Warden configuration\n" do
+    <<-EOF
+  config.warden do |manager|
+    manager.failure_app = TurboFailureApp
+  end
+    EOF
+  end
+
+  gsub_file "config/initializers/devise.rb", /  # config.secret_key = .+/, "  config.secret_key = Rails.application.credentials.secret_key_base"
+end
+
+def add_authentication_rodauth
+  log_action ". Adding authentication rodauth"
+  add_gem "rodauth-rails"
   run "bundle install"
   rails_command "generate rodauth:install"
   rails_command "generate rodauth:views"
@@ -63,7 +125,11 @@ def add_gems
   add_gem("friendly_id", "~> 5.4.2")
   add_gem("madmin")
   add_gem("name_of_person", "~> 1.1.1")
-  add_gem("sidekiq", "~> 7.0.1")
+  if options[:async_job] == "sidekiq"
+    add_gem("sidekiq", "~> 7.0.1")
+  else
+    add_gem("good_job")
+  end
   add_gem("sitemap_generator", "~> 6.3.0")
   add_gem("whenever", require: false)
   add_gem("responders", github: "heartcombo/responders", branch: "main")
@@ -77,6 +143,12 @@ def add_gems
     gem "caliber"
     gem "rubocop-shopify"
   end
+end
+
+def add_goodjob
+  log_action ". Adding goodjob"
+  generate("good_job:install")
+  environment("config.active_job.queue_adapter = :good_job")
 end
 
 def add_sitemap
@@ -171,8 +243,25 @@ def copy_templates
   # remove_file("app/assets/stylesheets/application.css")
   # remove_file("app/javascript/application.js")
   # remove_file("app/javascript/controllers/index.js")
+
   remove_file("Procfile.dev")
-  copy_file("Procfile.dev")
+  if options[:async_job] == "sidekiq"
+    copy_file("templates/Procfile.dev.sidekiq", "Procfile.dev")
+  else
+    copy_file("templates/Procfile.dev.goodjob", "Procfile.dev")
+  end
+
+  remove_file "app/controllers/application_controller.rb"
+  remove_file "app/views/shared/_navbar.html.erb"
+  remove_file "app/controllers/rodauth_controller.rb"
+  if options[:authentication] == "devise"
+    copy_file("templates/app/controllers/application_controller.rb.devise", "app/controllers/application_controller.rb")
+    copy_file("templates/app/views/shared/_navbar.html.erb.devise", "app/views/shared/_navbar.html.erb")
+  else
+    copy_file("templates/app/controllers/application_controller.rb.rodauth", "app/controllers/application_controller.rb")
+    copy_file("templates/app/controllers/rodauth_controller.rb.rodauth", "app/controllers/rodauth_controller.rb")
+    copy_file("templates/app/views/shared/_navbar.html.erb.rodauth", "app/views/shared/_navbar.html.erb")
+  end
 
   # copy_file("esbuild.config.js")
   # copy_file("app/javascript/application.js")
@@ -203,9 +292,16 @@ def gem_exists?(name)
 end
 
 def log_action(message)
-  say 
+  say
   say message, :blue
-  say 
+  say
+end
+
+def parse_additional_args
+  # args will contain additional arguments that are not recognized
+  # as a standard rails arguments, let's merge them
+  additional_args = HashWithIndifferentAccess[@args.flat_map{|s| s.scan(/--?([^=\s]+)(?:=(\S+))?/) }]
+  @options        = options.merge(additional_args)
 end
 
 def set_application_name

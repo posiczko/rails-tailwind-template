@@ -1,0 +1,16 @@
+# frozen_string_literal: true
+
+class ApplicationController < ActionController::Base
+  protect_from_forgery with: :exception
+
+  def current_account
+    rodauth.rails_account
+  end
+
+  def user_signed_in?
+    rodauth.rails_account.present?
+  end
+
+  helper_method :current_account
+  helper_method :user_logged_in?
+end

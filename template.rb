@@ -8,17 +8,20 @@ rails new myapp \
   --asset-pipeline=propshaft \
   --database=postgresql \
   --javascript=esbuild \
+  --async_job=[sidekiq|goodjob] \ # default goodjob
+  --authentication=[devise|rodauth] \ # default rodauth
   -m template.rb
 =end
 
 # frozen_string_literal: true
 
+require "active_support/core_ext/hash/indifferent_access"
 require_relative "template_utils.rb"
 
 #
 # Main
-#
 
+parse_additional_args
 add_template_repository_to_source_path
 default_to_esbuild
 add_gems
@@ -28,13 +31,17 @@ after_bundle do
   add_authentication
   add_authorization
   add_javascript_packages
-  add_sidekiq
+  if options[:async_job] == "sidekiq"
+    add_sidekiq
+  else
+    add_goodjob
+  end
   add_rspec
   add_friendly_id
   add_whenever
   add_sitemap
-  # add_esbuild_script
-  # rails_command "active_storage:install" # needs auth
+  # TODO: add_esbuild_script
+  # TODO: rails_command "active_storage:install" # needs auth
 
   # Make sure Linux is in the Gemfile.lock for deploying
   run "bundle lock --add-platform x86_64-linux"
