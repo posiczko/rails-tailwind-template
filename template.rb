@@ -63,12 +63,13 @@ after_bundle do
   configure_rubocop
 
   # Commit everything to git
+  run "rubocop -A"
   unless ENV["SKIP_GIT"]
     git :init
     git add: "."
     # git commit will fail if user.email is not configured
     begin
-      git(commit: %( -m 'Initial commit' ))
+      git(commit: %( -m 'Added initial commit' ))
     rescue StandardError => e
       puts e.message
     end

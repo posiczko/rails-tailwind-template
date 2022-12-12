@@ -316,6 +316,7 @@ def copy_templates
 
   directory "app", force: true
   directory "lib", force: true
+  copy_file(".reek.yml")
   route("root to: 'home#index'")
   route("get '/terms', to: 'home#terms'")
   route("get '/privacy', to: 'home#privacy'")
