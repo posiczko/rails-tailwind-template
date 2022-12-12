@@ -3,9 +3,13 @@
 require "fileutils"
 require "shellwords"
 
+def active_job_sidekiq?
+  options[:async_job] == "sidekiq"
+end
+
 def add_authentication
   log_action ". Adding authentication"
-  if options[:authentication] == "devise"
+  if authentication_devise?
     add_authentication_devise
   else
     add_authentication_rodauth
@@ -125,7 +129,7 @@ def add_gems
   add_gem("friendly_id", "~> 5.4.2")
   add_gem("madmin")
   add_gem("name_of_person", "~> 1.1.1")
-  if options[:async_job] == "sidekiq"
+  if active_job_sidekiq?
     add_gem("sidekiq", "~> 7.0.1")
   else
     add_gem("good_job")
@@ -189,19 +193,23 @@ def add_whenever
   run("wheneverize .")
 end
 
+def authentication_devise?
+  options[:authentication] == "devise"
+end
+
 def configure_rubocop
   log_action ". Adding rubocop"
   copy_file(".rubocop.yml")
 
-  content = <<~'RUBY'
-    return if require_error.nil? &&
-      Gem::Requirement.new(bundler_requirement).satisfied_by?(Gem::Version.new(Bundler::VERSION))
+  content = <<-'RUBY'
+return if require_error.nil? &&
+  Gem::Requirement.new(bundler_requirement).satisfied_by?(Gem::Version.new(Bundler::VERSION))
   RUBY
   gsub_file "bin/bundle",
             "return if require_error.nil? && Gem::Requirement.new(bundler_requirement).satisfied_by?(Gem::Version.new(Bundler::VERSION))",
             content
 
-  content = <<~'RUBY'
+  content = <<-'RUBY'
 
     warning = <<~END
       Activating bundler (#{bundler_requirement}) failed:
@@ -227,14 +235,35 @@ end
 
 def configure_tailwind
   log_action ". Configuring tailwind"
-  remove_file "tailwind.config.js"
-  run "yarn add -D @tailwindcss/typography @tailwindcss/forms @tailwindcss/aspect-ratio @tailwindcss/line-clamp"
-  copy_file "tailwind.config.js"
+  if js_importmap?
+    # rails tailwindcss:install already ran
+    %i[@tailwindcss/typography @tailwindcss/forms @tailwindcss/aspect-ratio @tailwindcss/line-clamp].each do |js_package|
+      pin_js_package(js_package)
+    end
+    # we rely on ordering here: Procfile.dev for either goodjob or sidekiq is already copied
+    # add appropriate line for tailwind css compile
+    gsub_file "Procfile.dev", /css: yarn build:css --watch/, "css: bin/rails tailwindcss:watch"
+    content = <<-ERB
+  <%= csp_meta_tag %>
+
+  <%= stylesheet_link_tag "tailwind", "inter-font", "data-turbo-track": "reload" %>
+    ERB
+    gsub_file("app/views/shared/_head.html.erb", /^.*<%= csp_meta_tag %>.*$/, content)
+  else
+    remove_file "tailwind.config.js"
+    run "yarn add -D @tailwindcss/typography @tailwindcss/forms @tailwindcss/aspect-ratio @tailwindcss/line-clamp"
+    copy_file "templates/tailwind.config.js", "tailwind.config.js"
+  end
 end
 
 def add_javascript_packages
   log_action ". Adding javascript packages"
-  run "yarn add local-time"
+  if !js_importmap?
+    run "yarn add local-time"
+  else
+    pin_js_package("local-time")
+    append_to_file("app/javascript/application.js", "import LocalTime from 'local-time'\nLocalTime.start()\n")
+  end
 end
 
 def copy_templates
@@ -245,22 +274,32 @@ def copy_templates
   # remove_file("app/javascript/controllers/index.js")
 
   remove_file("Procfile.dev")
-  if options[:async_job] == "sidekiq"
+  if active_job_sidekiq?
     copy_file("templates/Procfile.dev.sidekiq", "Procfile.dev")
   else
     copy_file("templates/Procfile.dev.goodjob", "Procfile.dev")
+  end
+  if js_importmap?
+    gsub_file "Procfile.dev", /js: yarn build --watch/, ""
   end
 
   remove_file "app/controllers/application_controller.rb"
   remove_file "app/views/shared/_navbar.html.erb"
   remove_file "app/controllers/rodauth_controller.rb"
-  if options[:authentication] == "devise"
+  if authentication_devise?
     copy_file("templates/app/controllers/application_controller.rb.devise", "app/controllers/application_controller.rb")
     copy_file("templates/app/views/shared/_navbar.html.erb.devise", "app/views/shared/_navbar.html.erb")
   else
     copy_file("templates/app/controllers/application_controller.rb.rodauth", "app/controllers/application_controller.rb")
     copy_file("templates/app/controllers/rodauth_controller.rb.rodauth", "app/controllers/rodauth_controller.rb")
     copy_file("templates/app/views/shared/_navbar.html.erb.rodauth", "app/views/shared/_navbar.html.erb")
+  end
+
+  remove_file "app/views/shared/_head.html.erb"
+  if js_importmap?
+    copy_file("templates/app/views/shared/_head.html.erb.importmap", "app/views/shared/_head.html.erb")
+  else
+    copy_file("templates/app/views/shared/_head.html.erb.esbuild", "app/views/shared/_head.html.erb")
   end
 
   # copy_file("esbuild.config.js")
@@ -291,6 +330,10 @@ def gem_exists?(name)
   File.read("Gemfile") =~ /^\s*gem ['"]#{name}['"]/
 end
 
+def js_importmap?
+  options[:javascript] == "importmap"
+end
+
 def log_action(message)
   say
   say message, :blue
@@ -300,8 +343,14 @@ end
 def parse_additional_args
   # args will contain additional arguments that are not recognized
   # as a standard rails arguments, let's merge them
-  additional_args = HashWithIndifferentAccess[@args.flat_map{|s| s.scan(/--?([^=\s]+)(?:=(\S+))?/) }]
+  additional_args = HashWithIndifferentAccess[@args.flat_map { |s| s.scan(/--?([^=\s]+)(?:=(\S+))?/) }]
   @options        = options.merge(additional_args)
+end
+
+def pin_js_package(package_name)
+  append_to_file("config/importmap.rb", "# #{package_name}\n")
+  run "./bin/importmap pin #{package_name}"
+
 end
 
 def set_application_name

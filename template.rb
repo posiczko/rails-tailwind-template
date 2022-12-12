@@ -7,10 +7,21 @@ rails new myapp \
   --css=tailwind \
   --asset-pipeline=propshaft \
   --database=postgresql \
-  --javascript=esbuild \
+  --javascript=esbuild \ # [esbuild|importmap] - default esbuild
   --async_job=[sidekiq|goodjob] \ # default goodjob
   --authentication=[devise|rodauth] \ # default rodauth
   -m template.rb
+
+rails new myapp \
+        --skip-jbuilder \
+        --skip-test \
+        --skip-system-test \
+        --css=tailwind \
+        --asset-pipeline=propshaft \
+        --database=postgresql \
+        --authentication=devise \
+        --javascript=importmap -m template.rb
+
 =end
 
 # frozen_string_literal: true
@@ -23,7 +34,7 @@ require_relative "template_utils.rb"
 
 parse_additional_args
 add_template_repository_to_source_path
-default_to_esbuild
+default_to_esbuild unless js_importmap?
 add_gems
 
 after_bundle do
@@ -31,7 +42,7 @@ after_bundle do
   add_authentication
   add_authorization
   add_javascript_packages
-  if options[:async_job] == "sidekiq"
+  if active_job_sidekiq?
     add_sidekiq
   else
     add_goodjob
