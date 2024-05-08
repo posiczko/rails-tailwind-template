@@ -126,15 +126,15 @@ def add_gems
 
   add_gem("action_policy")
   add_gem("cssbundling-rails")
-  add_gem("friendly_id", "~> 5.5.0")
+  add_gem("friendly_id" )
   add_gem("madmin")
-  add_gem("name_of_person", "~> 1.1.1")
+  add_gem("name_of_person")
   if active_job_sidekiq?
-    add_gem("sidekiq", "~> 7.0.2")
+    add_gem("sidekiq", "~> 7.2.4")
   else
-    add_gem("good_job")
+    add_gem("solid_queue")
   end
-  add_gem("sitemap_generator", "~> 6.3.0")
+  add_gem("sitemap_generator")
   add_gem("whenever", require: false)
   add_gem("responders", github: "heartcombo/responders", branch: "main")
 
@@ -154,10 +154,17 @@ def add_gems
   end
 end
 
+def add_solid_que
+  log_action ". Adding solid_que"
+
+  environment("config.active_job.queue_adapter = :good_job")
+end
+
+
 def add_goodjob
   log_action ". Adding goodjob"
-  generate("good_job:install")
-  environment("config.active_job.queue_adapter = :good_job")
+  generate("solid_queue:install")
+  append_to_file
 end
 
 def add_sitemap
@@ -240,6 +247,7 @@ end
 
 def configure_tailwind
   log_action ". Configuring tailwind"
+
   if js_importmap?
     # rails tailwindcss:install already ran
     %i[@tailwindcss/typography @tailwindcss/forms @tailwindcss/aspect-ratio @tailwindcss/line-clamp].each do |js_package|
@@ -282,8 +290,9 @@ def copy_templates
   if active_job_sidekiq?
     copy_file("templates/Procfile.dev.sidekiq", "Procfile.dev")
   else
-    copy_file("templates/Procfile.dev.goodjob", "Procfile.dev")
+    copy_file("templates/Procfile.dev.solid_que", "Procfile.dev")
   end
+
   if js_importmap?
     gsub_file "Procfile.dev", /js: yarn build --watch/, ""
   end
@@ -291,6 +300,7 @@ def copy_templates
   remove_file "app/controllers/application_controller.rb"
   remove_file "app/views/shared/_navbar.html.erb"
   remove_file "app/controllers/rodauth_controller.rb"
+
   if authentication_devise?
     copy_file("templates/app/controllers/application_controller.rb.devise", "app/controllers/application_controller.rb")
     copy_file("templates/app/views/shared/_navbar.html.erb.devise", "app/views/shared/_navbar.html.erb")
@@ -301,6 +311,7 @@ def copy_templates
   end
 
   remove_file "app/views/shared/_head.html.erb"
+
   if js_importmap?
     copy_file("templates/app/views/shared/_head.html.erb.importmap", "app/views/shared/_head.html.erb")
   else
@@ -320,6 +331,10 @@ def copy_templates
   route("root to: 'home#index'")
   route("get '/terms', to: 'home#terms'")
   route("get '/privacy', to: 'home#privacy'")
+
+  inject_into_file "config/environments/development.rb",
+                   "    config.middleware.insert_after ActionDispatch::Static, Rack::LiveReload",
+                   before: /^end/
 end
 
 def default_to_esbuild
@@ -332,12 +347,26 @@ def default_to_esbuild
   end
 end
 
+def   default_to_importmap
+  log_action ". Defaulting to importmap"
+
+  return if options[:javascript] == "importmap"
+
+  unless options[:skip_javascript]
+    @options = options.merge(javascript: "importmap")
+  end
+end
+
 def gem_exists?(name)
   File.read("Gemfile") =~ /^\s*gem ['"]#{name}['"]/
 end
 
 def js_importmap?
   options[:javascript] == "importmap"
+end
+
+def js_esbuild?
+  options[:javascript] == "esbuild"
 end
 
 def log_action(message)

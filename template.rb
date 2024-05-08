@@ -7,8 +7,8 @@ rails new myapp \
   --css=tailwind \
   --asset-pipeline=propshaft \
   --database=postgresql \
-  --javascript=esbuild \ # [esbuild|importmap] - default esbuild
-  --async_job=[sidekiq|goodjob] \ # default goodjob
+  --javascript=esbuild \ # [esbuild|importmap] - default improtmap
+  --async_job=[solid_que|sidekiq] \ # default solid_que
   --authentication=[devise|rodauth] \ # default rodauth
   -m template.rb
 
@@ -34,7 +34,7 @@ require_relative "template_utils.rb"
 
 parse_additional_args
 add_template_repository_to_source_path
-default_to_esbuild unless js_importmap?
+default_to_importmap unless js_esbuild?
 add_gems
 
 after_bundle do
@@ -45,7 +45,7 @@ after_bundle do
   if active_job_sidekiq?
     add_sidekiq
   else
-    add_goodjob
+    add_solid_que
   end
   add_rspec
   add_friendly_id
@@ -58,9 +58,9 @@ after_bundle do
   run "bundle lock --add-platform x86_64-linux"
 
   copy_templates
-  configure_tailwind
+  # configure_tailwind
   configure_guard
-  configure_rubocop
+  # configure_rubocop
 
   # Commit everything to git
   run "rubocop -A"
