@@ -139,8 +139,6 @@ def add_gems
   add_gem("responders", github: "heartcombo/responders", branch: "main")
 
   gem_group :development do
-    gem "rack-livereload"
-    gem "guard-livereload"
   end
 
   gem_group :code_quality do
@@ -242,7 +240,6 @@ end
 
 def configure_guard
   log_action ". Configuring guard"
-  run "bundle exec guard init livereload"
 end
 
 def configure_tailwind
@@ -331,10 +328,6 @@ def copy_templates
   route("root to: 'home#index'")
   route("get '/terms', to: 'home#terms'")
   route("get '/privacy', to: 'home#privacy'")
-
-  inject_into_file "config/environments/development.rb",
-                   "    config.middleware.insert_after ActionDispatch::Static, Rack::LiveReload",
-                   before: /^end/
 end
 
 def default_to_esbuild
