@@ -51,6 +51,7 @@ after_bundle do
   add_friendly_id
   add_whenever
   add_sitemap
+  add_hotwire_livereload
   # TODO: add_esbuild_script
   # TODO: rails_command "active_storage:install" # needs auth
 

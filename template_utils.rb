@@ -152,9 +152,28 @@ def add_gems
   end
 end
 
+def add_hotwire_livereload
+  log_action ". Adding hotwire livereload gem for dev"
+  gem_group :development do
+    gem "hotwire-livereload"
+  end
+  log_action "    Add non-standard directories you want to livereload to development.rb environment via config.hotwire_livereload.listen_paths"
+  log_action "    See https://github.com/kirillplatonov/hotwire-livereload for more information"
+  content = <<-RUBY
+Rails.application.configure do
+  if Rails.env.development?
+    # Configure debounce delay for livereload
+    config.hotwire_livereload.debounce_delay_ms = 300 # in milliseconds
+  end
+end
+  RUBY
+  insert_into_file("config/initializers/hotwire-livereload.rb",
+                   content,
+                  )
+end
+
 def add_solid_que
   log_action ". Adding solid_que"
-
   environment("config.active_job.queue_adapter = :good_job")
 end
 
