@@ -43,15 +43,15 @@ after_bundle do
   add_authorization
   add_javascript_packages
   if active_job_sidekiq?
-    add_sidekiq
+    configure_sidekiq
   else
-    add_solid_que
+    configure_solid_que
   end
-  add_rspec
-  add_friendly_id
-  add_whenever
-  add_sitemap
-  add_hotwire_livereload
+  add_and_configure_rspec
+  configure_friendly_id
+  configure_whenever
+  configure_sitemap
+  add_and_configure_hotwire_livereload
   # TODO: add_esbuild_script
   # TODO: rails_command "active_storage:install" # needs auth
 
@@ -62,6 +62,8 @@ after_bundle do
   # configure_tailwind
   configure_guard
   # configure_rubocop
+
+  exit
 
   # Commit everything to git
   run "rubocop -A"

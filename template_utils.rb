@@ -91,7 +91,7 @@ def add_authorization
   rails_command "generate action_policy:install"
 end
 
-def add_friendly_id
+def configure_friendly_id
   log_action ". Adding friendly_id"
 
   generate "friendly_id"
@@ -126,7 +126,7 @@ def add_gems
 
   add_gem("action_policy")
   add_gem("cssbundling-rails")
-  add_gem("friendly_id" )
+  add_gem("friendly_id")
   add_gem("madmin")
   add_gem("name_of_person")
   if active_job_sidekiq?
@@ -139,6 +139,7 @@ def add_gems
   add_gem("responders", github: "heartcombo/responders", branch: "main")
 
   gem_group :development do
+    gem "hotwire-rails"
   end
 
   gem_group :code_quality do
@@ -148,49 +149,38 @@ def add_gems
     gem "caliber"
     gem "git-lint"
     gem "reek"
-    gem "rubocop-shopify"
+    gem "rubocop-shopify", require: false
   end
 end
 
-def add_hotwire_livereload
+def add_and_configure_hotwire_livereload
   log_action ". Adding hotwire livereload gem for dev"
-  gem_group :development do
-    gem "hotwire-livereload"
-  end
   log_action "    Add non-standard directories you want to livereload to development.rb environment via config.hotwire_livereload.listen_paths"
   log_action "    See https://github.com/kirillplatonov/hotwire-livereload for more information"
-  content = <<-RUBY
-Rails.application.configure do
-  if Rails.env.development?
-    # Configure debounce delay for livereload
-    config.hotwire_livereload.debounce_delay_ms = 300 # in milliseconds
+  create_file "config/initializers/hotwire-livereload.rb" do
+    <<~RUBY
+      Rails.application.configure do
+        if Rails.env.development?
+          # Configure debounce delay for livereload
+          config.hotwire_livereload.debounce_delay_ms = 300 # in milliseconds
+        end
+      end
+    RUBY
   end
 end
-  RUBY
-  insert_into_file("config/initializers/hotwire-livereload.rb",
-                   content,
-                  )
-end
 
-def add_solid_que
+def configure_solid_que
   log_action ". Adding solid_que"
-  environment("config.active_job.queue_adapter = :good_job")
-end
-
-
-def add_goodjob
-  log_action ". Adding goodjob"
   generate("solid_queue:install")
-  append_to_file
 end
 
-def add_sitemap
+def configure_sitemap
   log_action ". Adding sitemap"
 
   rails_command "sitemap:install"
 end
 
-def add_sidekiq
+def configure_sidekiq
   log_action ". Adding sidekiq"
 
   environment("config.active_job.queue_adapter = :sidekiq")
@@ -207,17 +197,28 @@ def add_sidekiq
   insert_into_file("config/routes.rb", "#{content}\n\n", after: "Rails.application.routes.draw do\n")
 end
 
-def add_rspec
+def add_and_configure_rspec
   log_action ". Adding rspec"
   gem_group :development, :test do
+    gem "capybara"
+    gem "capybara-screenshot"
     gem "rspec-rails"
+    gem "selenium-webdriver"
   end
 
   run "bundle install"
   rails_command "generate rspec:install"
+
+  empty_directory "spec/support", force: true
+  copy_file "templates/spec/support/chromedriver.rb", "spec/support/chromedriver.rb"
+
+  insert_into_file "spec/rails_helper.rb",
+                   "require \"support/chromedriver\"\n",
+                   after: "require 'rspec/rails'\n"
+  uncomment_lines "spec/rails_helper.rb", /Rails.root.glob\(\'spec\/support\/\*\*\/\*.rb\'\).sort.each \{ |f| require f \}/
 end
 
-def add_whenever
+def configure_whenever
   log_action ". Adding whenever"
   run("wheneverize .")
 end
@@ -259,6 +260,45 @@ end
 
 def configure_guard
   log_action ". Configuring guard"
+  gem_group :development do
+    gem "guard-rspec", require: false
+  end
+
+  create_file "Guardfile" do
+    <<~GUARD
+      guard "rspec", cmd: "bundle exec rspec" do
+        require "guard/rspec/dsl"
+        dsl = Guard::RSpec::Dsl.new(self)
+      
+        # RSpec files
+        rspec = dsl.rspec
+        watch(rspec.spec_helper) { rspec.spec_dir }
+        watch(rspec.spec_support) { rspec.spec_dir }
+        watch(rspec.spec_files)
+      
+        # Rails files
+        rails = dsl.rails(view_extensions: %w[erb haml slim])
+        dsl.watch_spec_files_for(rails.app_files)
+        dsl.watch_spec_files_for(rails.views)
+      
+        # Rails config changes
+        watch(rails.spec_helper) { rspec.spec_dir }
+        watch(rails.routes) { "#{rspec.spec_dir}/features" }
+        watch(rails.app_controller) { "#{rspec.spec_dir}/features" }
+      
+        watch(rails.controllers) do |m|
+          [
+            rspec.spec.call("routing/#{m[1]}_routing"),
+            rspec.spec.call("features/#{m[1]}")
+          ]
+        end
+      
+        # Capybara features specs
+        watch(rails.view_dirs) { |m| rspec.spec.call("features/#{m[1]}") }
+        watch(rails.layouts) { |m| rspec.spec.call("features/#{m[1]}") }
+      end      end
+    GUARD
+  end
 end
 
 def configure_tailwind
@@ -341,12 +381,12 @@ def copy_templates
   # directory("config", force: true)
   # directory("lib", force: true)
 
-  directory "app", force: true
-  directory "lib", force: true
-  copy_file(".reek.yml")
-  route("root to: 'home#index'")
-  route("get '/terms', to: 'home#terms'")
-  route("get '/privacy', to: 'home#privacy'")
+  ## directory "app", force: true
+  ## directory "lib", force: true
+  ## copy_file(".reek.yml")
+  ## route("root to: 'home#index'")
+  ## route("get '/terms', to: 'home#terms'")
+  ## route("get '/privacy', to: 'home#privacy'")
 end
 
 def default_to_esbuild
@@ -359,7 +399,7 @@ def default_to_esbuild
   end
 end
 
-def   default_to_importmap
+def default_to_importmap
   log_action ". Defaulting to importmap"
 
   return if options[:javascript] == "importmap"
