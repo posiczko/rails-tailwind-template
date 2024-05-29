@@ -285,20 +285,21 @@ def configure_guard
       
         # Rails config changes
         watch(rails.spec_helper) { rspec.spec_dir }
-        watch(rails.routes) { "#{rspec.spec_dir}/features" }
-        watch(rails.app_controller) { "#{rspec.spec_dir}/features" }
+        watch(rails.routes) { "\#{rspec.spec_dir}/features" }
+        watch(rails.app_controller) { "\#{rspec.spec_dir}/features" }
       
         watch(rails.controllers) do |m|
           [
-            rspec.spec.call("routing/#{m[1]}_routing"),
-            rspec.spec.call("features/#{m[1]}")
+            rspec.spec.call("routing/\#{m[1]}_routing"),
+            rspec.spec.call("features/\#{m[1]}")
           ]
         end
       
         # Capybara features specs
-        watch(rails.view_dirs) { |m| rspec.spec.call("features/#{m[1]}") }
-        watch(rails.layouts) { |m| rspec.spec.call("features/#{m[1]}") }
-      end      end
+        watch(rails.view_dirs) { |m| rspec.spec.call("features/\#{m[1]}") }
+        watch(rails.layouts) { |m| rspec.spec.call("features/\#{m[1]}") }
+      end      
+    end
     GUARD
   end
 end

@@ -61,7 +61,7 @@ after_bundle do
   copy_templates
   configure_authentication
   # configure_tailwind
-  # configure_guard
+  configure_guard
   # configure_rubocop
 
   create_home_controller
