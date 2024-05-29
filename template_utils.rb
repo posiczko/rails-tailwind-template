@@ -414,6 +414,9 @@ def copy_templates
   directory("templates/lib/templates/erb/scaffold", "lib/erb/scaffold")
   copy_file "templates/spec/support/chromedriver.rb", "spec/support/chromedriver.rb"
   copy_file(".reek.yml")
+
+  comment_lines "Gemfile", /^ruby "3.3.1"$/
+  insert_into_file("Gemfile", "ruby file: \".ruby-version\"\n", after: "source \"https://rubygems.org\"\n")
 end
 
 def default_to_esbuild
