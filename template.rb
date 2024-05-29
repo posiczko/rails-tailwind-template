@@ -59,8 +59,9 @@ after_bundle do
   run "bundle lock --add-platform x86_64-linux"
 
   copy_templates
+  configure_authentication
   # configure_tailwind
-  configure_guard
+  # configure_guard
   # configure_rubocop
 
   exit
