@@ -96,7 +96,7 @@ def configure_friendly_id
   log_action ". Adding friendly_id"
 
   generate "friendly_id"
-  insert_into_file(Dir["db/migrate/**/*friendly_id_slugs.rb"].first, "[7.2]", after: "ActiveRecord::Migration")
+  insert_into_file(Dir["db/migrate/**/*friendly_id_slugs.rb"].first, "[7.1]", after: "ActiveRecord::Migration")
 end
 
 def add_template_repository_to_source_path
@@ -137,11 +137,11 @@ def add_gems
   end
   add_gem("sitemap_generator")
   add_gem("whenever", require: false)
-  #add_gem("responders", github: "heartcombo/responders", branch: "main")
+  # add_gem("responders", github: "heartcombo/responders", branch: "main")
 
   gem_group :development do
     gem "hotwire-rails"
-    gem"hotwire-livereload"
+    gem "hotwire-livereload"
   end
 
   gem_group :code_quality do
@@ -369,9 +369,6 @@ def create_home_controller
   log_action ". Creating home controller"
   generate :controller, "home", %w[index terms privacy]
   route "root to: 'home#index'"
-  route "get '/terms', to: 'home#terms'"
-  route "get '/privacy', to: 'home#privacy'"
-  route "get '/index', to: 'home#index'"
   remove_file "spec/views/home"
   remove_file "app/helpers/home_helper.rb"
   remove_file "spec/helpers/home_helper_spec.rb"
@@ -395,40 +392,27 @@ def copy_templates
     gsub_file "Procfile.dev", /js: yarn build --watch/, ""
   end
 
-  # remove_file "app/controllers/application_controller.rb"
-  # remove_file "app/views/shared/_navbar.html.erb"
-  # remove_file "app/controllers/rodauth_controller.rb"
+  if authentication_devise?
+    copy_file("templates/app/views/shared/_navbar.html.erb.devise", "app/views/shared/_navbar.html.erb")
+  else
+    copy_file("templates/app/views/shared/_navbar.html.erb.rodauth", "app/views/shared/_navbar.html.erb")
+  end
 
-  # if authentication_devise?
-  #  copy_file("templates/app/controllers/application_controller.rb.devise", "app/controllers/application_controller.rb")
-  #  copy_file("templates/app/views/shared/_navbar.html.erb.devise", "app/views/shared/_navbar.html.erb")
-  # else
-  #  copy_file("templates/app/controllers/application_controller.rb.rodauth", "app/controllers/application_controller.rb")
-  #  copy_file("templates/app/controllers/rodauth_controller.rb.rodauth", "app/controllers/rodauth_controller.rb")
-  #  copy_file("templates/app/views/shared/_navbar.html.erb.rodauth", "app/views/shared/_navbar.html.erb")
-  # end
+  if js_importmap?
+    copy_file("templates/app/views/shared/_head.html.erb.importmap", "app/views/shared/_head.html.erb")
+  else
+    copy_file("templates/app/views/shared/_head.html.erb.esbuild", "app/views/shared/_head.html.erb")
+    # copy_file("config/esbuild.config.js")
+  end
 
-  # remove_file "app/views/shared/_head.html.erb"
-
-  # if js_importmap?
-  #  copy_file("templates/app/views/shared/_head.html.erb.importmap", "app/views/shared/_head.html.erb")
-  # else
-  #  copy_file("templates/app/views/shared/_head.html.erb.esbuild", "app/views/shared/_head.html.erb")
-  # end
-
-  # copy_file("esbuild.config.js")
   # copy_file("app/javascript/application.js")
   # copy_file("app/javascript/controllers/index.js")
   #
   # directory("config", force: true)
-  # directory("lib", force: true)
-
-  ## directory "app", force: true
-  ## directory "lib", force: true
-  ## copy_file(".reek.yml")
-  ## route("root to: 'home#index'")
-  ## route("get '/terms', to: 'home#terms'")
-  ## route("get '/privacy', to: 'home#privacy'")
+  empty_directory("lib/erb/scaffold", force: true)
+  directory("templates/lib/templates/erb/scaffold", "lib/erb/scaffold")
+  copy_file "templates/spec/support/chromedriver.rb", "spec/support/chromedriver.rb"
+  copy_file(".reek.yml")
 end
 
 def default_to_esbuild
