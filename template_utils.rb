@@ -159,7 +159,7 @@ def add_and_configure_hotwire_livereload
   log_action ". Adding hotwire livereload gem for dev"
   log_action "    Add non-standard directories you want to livereload to development.rb environment via config.hotwire_livereload.listen_paths"
   log_action "    See https://github.com/kirillplatonov/hotwire-livereload for more information"
-  create_file "config/initializers/hotwire-livereload.rb" do
+  create_file "config/initializers/hotwire_livereload.rb" do
     <<~RUBY
       Rails.application.configure do
         if Rails.env.development?
@@ -232,28 +232,6 @@ end
 def configure_rubocop
   log_action ". Adding rubocop"
   copy_file(".rubocop.yml")
-
-  content = <<-'RUBY'
-return if require_error.nil? &&
-  Gem::Requirement.new(bundler_requirement).satisfied_by?(Gem::Version.new(Bundler::VERSION))
-  RUBY
-  gsub_file "bin/bundle",
-            "return if require_error.nil? && Gem::Requirement.new(bundler_requirement).satisfied_by?(Gem::Version.new(Bundler::VERSION))",
-            content
-
-  content = <<-'RUBY'
-
-    warning = <<~END
-      Activating bundler (#{bundler_requirement}) failed:
-      #{gem_error.message}\n\nTo install the version of bundler this project requires, run `gem install bundler -v '#{bundler_requirement}'`"
-    END
-    warn(warning)
-
-  RUBY
-  gsub_file "bin/bundle",
-            /warn \"Activating bundler .+$/,
-            content
-
   say
   say "You can now run:"
   say "rubocop -A"

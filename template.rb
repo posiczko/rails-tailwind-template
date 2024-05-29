@@ -62,7 +62,7 @@ after_bundle do
   configure_authentication
   # configure_tailwind
   configure_guard
-  # configure_rubocop
+  configure_rubocop
 
   create_home_controller
 
