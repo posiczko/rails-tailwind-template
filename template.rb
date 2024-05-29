@@ -64,6 +64,8 @@ after_bundle do
   # configure_guard
   # configure_rubocop
 
+  create_home_controller
+
   exit
 
   # Commit everything to git

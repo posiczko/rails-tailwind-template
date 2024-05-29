@@ -141,6 +141,7 @@ def add_gems
 
   gem_group :development do
     gem "hotwire-rails"
+    gem"hotwire-livereload"
   end
 
   gem_group :code_quality do
@@ -362,6 +363,18 @@ def configure_authentication
                      after: "class ApplicationController < ActionController::Base\n")
     #  copy_file("templates/app/views/shared/_navbar.html.erb.rodauth", "app/views/shared/_navbar.html.erb")
   end
+end
+
+def create_home_controller
+  log_action ". Creating home controller"
+  generate :controller, "home", %w[index terms privacy]
+  route "root to: 'home#index'"
+  route "get '/terms', to: 'home#terms'"
+  route "get '/privacy', to: 'home#privacy'"
+  route "get '/index', to: 'home#index'"
+  remove_file "spec/views/home"
+  remove_file "app/helpers/home_helper.rb"
+  remove_file "spec/helpers/home_helper_spec.rb"
 end
 
 def copy_templates
